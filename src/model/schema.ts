@@ -25,14 +25,15 @@ const CalibrationSchema = z.object({
   origin: z.object({ x: finite, y: finite }).optional(),
   rotation: z.number().finite().min(-Math.PI).max(Math.PI).optional(),
 });
-export const WallSchema = z.object({ id: z.string(), name: z.string().max(160), start: PointSchema, end: PointSchema, thickness: MeasureSchema, footprint: z.array(PointSchema).length(4).optional() });
+const ReviewSchema = z.object({ status: z.enum(['to-check','to-improve','done']), note: z.string().max(4000), sourceId: z.string().max(160).nullable() }).optional();
+export const WallSchema = z.object({ id: z.string(), name: z.string().max(160), review: ReviewSchema, start: PointSchema, end: PointSchema, thickness: MeasureSchema, footprint: z.array(PointSchema).length(4).optional() });
 export const OpeningSchema = z.object({
   id: z.string(), name: z.string().max(160), kind: z.enum(['door', 'window']), wallId: z.string(),
   offset: MeasureSchema, width: MeasureSchema, height: MeasureSchema, sill: MeasureSchema,
-  hinge: z.enum(['start', 'end']).optional(), swing: z.union([z.literal(-1), z.literal(1)]).optional(),
+  hinge: z.enum(['start', 'end']).optional(), swing: z.union([z.literal(-1), z.literal(1)]).optional(), operationSourceId: z.string().max(160).optional(), review: ReviewSchema,
 });
-const RoomSchema = z.object({ id: z.string(), name: z.string().max(160), points: z.array(PointSchema).min(3).max(200), color: z.string().regex(/^#[0-9a-fA-F]{6}$/), kind: z.enum(['interior','exterior','unverified']).optional(), controlDimensions: z.array(z.object({label:z.string(),expected:MeasureSchema,from:z.number().int().min(0),to:z.number().int().min(0)})).optional() });
-const StairSchema = z.object({ id: z.string(), name: z.string().max(160), start: PointSchema, end: PointSchema, width: MeasureSchema, footprint: z.array(PointSchema).min(3).max(100).optional(), path: z.array(PointSchema).min(2).max(100).optional() });
+const RoomSchema = z.object({ review: ReviewSchema, id: z.string(), name: z.string().max(160), points: z.array(PointSchema).min(3).max(200), color: z.string().regex(/^#[0-9a-fA-F]{6}$/), kind: z.enum(['interior','exterior','unverified']).optional(), controlDimensions: z.array(z.object({label:z.string(),expected:MeasureSchema,from:z.number().int().min(0),to:z.number().int().min(0)})).optional() });
+const StairSchema = z.object({ review: ReviewSchema, id: z.string(), name: z.string().max(160), start: PointSchema, end: PointSchema, width: MeasureSchema, footprint: z.array(PointSchema).min(3).max(100).optional(), path: z.array(PointSchema).min(2).max(100).optional() });
 export const FloorSchema = z.object({
   id: z.string(), name: z.string().max(160), shortName: z.string().max(30), elevation: MeasureSchema, height: MeasureSchema,
   walls: z.array(WallSchema).max(2000), openings: z.array(OpeningSchema).max(2000), rooms: z.array(RoomSchema).max(300), stairs: z.array(StairSchema).max(100),

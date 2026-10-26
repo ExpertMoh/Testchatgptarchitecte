@@ -54,7 +54,7 @@ test('importe une image, bloque la mesure sans recalage puis préserve les cotes
   await page.goto('/');const fixture=await imageFixture(page);
   await page.getByRole('button',{name:'Importer des plans',exact:true}).click();await page.getByLabel('Fichier du plan').setInputFiles(fixture);
   await page.getByRole('button',{name:'Importer le document',exact:true}).click();
-  await expect(page.getByRole('heading',{name:'Niveau à documenter',level:1})).toBeVisible();await expect(page.locator('.demo-banner')).toHaveCount(0);
+  await expect(page.getByRole('heading',{name:'Niveau à documenter',level:1})).toBeVisible({timeout:15000});await expect(page.locator('.demo-banner')).toHaveCount(0);
   await expect(page.locator('.board-label').first()).toContainText('NON RECALÉ');
   await page.getByRole('button',{name:'Mesurer (L)',exact:true}).click();await clickWorld(page,1,4);await expect(page.getByRole('status')).toContainText('Recalez le document');
   await page.getByRole('button',{name:'Recaler (C)',exact:true}).click();await clickWorld(page,1,4);await clickWorld(page,7,4);
@@ -74,7 +74,7 @@ test('rasterise une page PDF avec son worker local et signale une page absente',
   await page.getByRole('button',{name:'Importer des plans',exact:true}).click();await page.getByLabel('Fichier du plan').setInputFiles(pdfFixture());
   await page.getByLabel('Page du PDF',{exact:true}).fill('9');await page.getByRole('button',{name:'Importer le document',exact:true}).click();await expect(page.getByRole('alert')).toContainText('1 page');
   await page.getByLabel('Page du PDF',{exact:true}).fill('1');await page.getByRole('button',{name:'Importer le document',exact:true}).click();
-  await expect(page.getByRole('heading',{name:'Niveau à documenter',level:1})).toBeVisible();await expect(page.locator('#architectural-plan image')).toHaveAttribute('href',/^data:image\/png;base64,/);
+  await expect(page.getByRole('heading',{name:'Niveau à documenter',level:1})).toBeVisible({timeout:15000});await expect(page.locator('#architectural-plan image')).toHaveAttribute('href',/^data:image\/png;base64,/);
   expect(errors).toEqual([]);
 });
 

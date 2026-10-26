@@ -47,6 +47,7 @@ export function validateGeometry(project: Project): Issue[] {
   for(const f of project.floors) {
     const add = (severity: Issue['severity'], message: string, elementId?: string) => issues.push({severity,message,floorId:f.id,elementId});
     for(const e of [f,...f.walls,...f.rooms,...f.openings,...f.stairs]) { if(ids.has(e.id)) add('error','Identifiant dupliqué.',e.id); ids.add(e.id); }
+    for(const e of [...f.walls,...f.rooms,...f.openings,...f.stairs])if(e.review?.sourceId&&!sources.has(e.review.sourceId))add('warning',`${e.name} : source de l’observation introuvable.`,e.id);
     checkM(f.height,f.id,`${f.name}, hauteur`); checkM(f.elevation,f.id,`${f.name}, altitude`);
     if(f.height.value !== null && f.height.value <= 0) add('error','La hauteur d’étage doit être positive.');
     if(f.sourceId && !sources.has(f.sourceId)) add('error','Document de fond introuvable.');
@@ -70,6 +71,7 @@ export function validateGeometry(project: Project): Issue[] {
       if((s.width.value!==null && s.width.value<=0)||(a&&b&&distance(a,b)<.1)) add('error',`${s.name} : géométrie invalide.`,s.id);
     }
     for(const o of f.openings) {
+      if(o.operationSourceId&&!sources.has(o.operationSourceId))add('error',`${o.name} : source du mécanisme introuvable.`,o.id);
       for(const key of ['offset','width','height','sill'] as const) checkM(o[key],f.id,`${o.name}, ${key}`,o.id);
       const wall=f.walls.find(w=>w.id===o.wallId),g=wall && wallGeometry(wall);
       if(!g) { add('error',`${o.name} : mur hôte absent ou non mesuré.`,o.id); continue; }

@@ -46,7 +46,10 @@ E2E_PREVIEW=1 npm run test:e2e
 - Mesure entre deux points, longueurs et surfaces déduites du modèle. Les surfaces correspondent aux contours dessinés, sans certification réglementaire.
 - Rendu 3D des mêmes murs et pièces, avec découpe des ouvertures mesurées ; assemblage des niveaux à leurs altitudes ; caméra orbitale et vue de dessus.
 - Coupe **visuelle** à 1,10 m pour lire l’intérieur. Elle ne change aucune hauteur du modèle.
-- Visite intérieure à hauteur de caméra 1,65 m, ZQSD/WASD ou flèches et souris. Cliquer « Entrer dans la visite » ; Échap libère la souris. Pas de collisions, de circulation entre étages ou de validation d’accessibilité.
+- Visite intérieure avec navigation directe dans chaque pièce, plan de localisation, position courante, commandes ZQSD/WASD, souris et commandes tactiles. Les murs et les portes fermées bloquent les déplacements. Les passages incomplets restent bloqués. Échap libère la souris ; E actionne une porte proche dont le mécanisme est documenté. Pas de montée d’escalier ni de validation d’accessibilité.
+- Panneau « Explorer les pièces » : sélection et annotation des murs, portes, fenêtres et escaliers proches d’un contour ; filtres de noms et de transparence des murs ; plein écran 3D.
+- Portes animées lorsque largeur, hauteur, seuil, gonds, sens et source sont renseignés. La démonstration utilise des mécanismes explicitement fictifs. Aucun gabarit de porte par défaut n’est ajouté au relevé.
+- Suivi de correction par pièce ou élément : « À vérifier », « À améliorer », « Traité », observation libre et source. Ces données sont sauvegardées localement et dans le JSON, avec annulation/rétablissement.
 - Import PNG, JPG, WebP et d’une page PDF au choix, rendu du PDF dans un worker local. Limite de 20 Mo par fichier ; rendu PDF limité à 2 400 px sur son grand côté ; images limitées à 64 mégapixels.
 - Document en fond avec visibilité et opacité ; comparaison Original / Superposition / Tracé. Calibration uniforme, translation et rotation de repère dans le modèle ; le relevé intégré aligne la façade sans redresser arbitrairement les angles du bâtiment. L’outil de recalage interactif demande deux points, une distance vérifiée et sa référence.
 - Annuler/rétablir jusqu’à 40 modifications ; sauvegarde locale automatique ; import/export JSON du projet, images et provenance incluses ; export SVG de la vue courante.
@@ -163,3 +166,25 @@ L’audit de fidélité et les limites de contrôle figurent dans `docs/fidelite
 Les cotes indépendantes lues (430/355/218 sur la page 6, 370 sur la page 7 et 275 sur la page 8) sont aussi comparées aux distances du tracé. Les écarts de plus de 5 cm sont affichés comme points à vérifier, dans les propriétés des espaces et dans « Sources & limites ». La tolérance de contrôle ne certifie pas la précision du relevé. Les longueurs longitudinales contrôlées contraignent maintenant le modèle par un ajustement continu suivant les axes mitoyens, sans modification des images. Les facteurs et références de cote sont consignés dans les métadonnées et consultables dans la fenêtre. Les autres coordonnées restent déduites ; une validation métrique complète exige encore le contrôle des cotes non reportées et de l’état réel.
 
 Le relevé courant porte la révision `trace-2`. Une ancienne version conservée dans le navigateur n’est pas écrasée : le bandeau **Ouvrir la version actualisée** permet de charger la nouvelle après sauvegarde ou export de l’ancien projet.
+
+
+## Visite intérieure et reconstruction fidèle
+
+1. Ouvrir **3D**, puis **Explorer les pièces** (icône de liste sur la vue). Choisir **Commun** pour examiner le couloir du premier étage, ou une autre pièce, puis **Entrer dans cette pièce**. L’accès direct est une téléportation de travail et ne valide pas un chemin praticable.
+2. Sur ordinateur, cliquer **Entrer dans la visite** pour capturer la souris. Se déplacer avec ZQSD, WASD ou les flèches ; **E** ouvre ou ferme la porte la plus proche à moins de 1,80 m. **Échap** libère la souris pour utiliser les panneaux. Les boutons à l’écran permettent de marcher et tourner sans capture, notamment sur mobile.
+3. Le panneau affiche les ouvertures proches. **Documenter cette porte** sélectionne une porte incomplète : renseigner ses dimensions avec leur provenance, puis les gonds, le sens et la source du mécanisme. Les champs décrivent le mécanisme par rapport à l’axe orienté du mur hôte. Une porte ne devient animable qu’après ces saisies. L’angle animé de 90° est une convention de visualisation, pas une mesure de débattement ; l’épaisseur du vantail n’est pas supposée.
+4. Cliquer une pièce ou un élément de la liste pour consulter ses propriétés. Utiliser **Suivi de correction** pour enregistrer une observation et son état. **Traité** est un statut de travail ; il ne confirme pas les dimensions. Les notes et leurs sources suivent le projet lors d’un export/import JSON.
+5. **Murs transparents** modifie l’affichage, sans retirer les obstacles. **Noms des pièces** affiche les libellés en vue orbitale ou de dessus. Le mode assemblé montre les niveaux à leurs altitudes ; la visite se fait niveau par niveau.
+
+Le moteur de navigation est dans `src/model/exploration.ts` : recherche de points à l’intérieur des contours concaves, identification de pièce, proximité des éléments, collision avec les parements et les vantaux ouverts, subdivision des déplacements pour empêcher de traverser une cloison mince. Le rendu est calculé à la demande en vue orbitale et suspendu derrière les fenêtres d’import ; la visite utilise un éclairage de lecture qui suit la caméra, sans ombres portées. La position de l’œil (1,65 m), le rayon de déplacement (0,18 m), le dégagement vertical (1,80 m), la vitesse et la portée d’interaction sont des **conventions de navigation**, indépendantes du relevé. Les collisions utilisent le vantail dans sa position finale pendant l’animation. La fermeture est refusée si elle enfermerait la caméra dans le passage. Elles ne simulent ni une personne réglementaire, ni les trémies, ni le balayage du vantail, ni l’accessibilité.
+
+L’inventaire associe les éléments du modèle par proximité géométrique, à vérifier ; il ne prouve pas leur appartenance à une pièce. Aucun meuble, luminaire, radiateur, compteur, canalisation ou équipement absent des sources n’est créé. Les espaces d’usage non attesté ne sont pas proposés comme pièces visitables. Un écart entre le contour et un mur peut empêcher un passage : corriger le modèle plutôt que désactiver les collisions.
+
+Pour aller vers une reconstruction du bâtiment à l’identique, compléter les sources avec :
+
+- des photographies actuelles de chaque pièce et de chaque face du couloir, des portes, fenêtres, plafonds et équipements ;
+- les hauteurs libres, épaisseurs de dalle, hauteurs et seuils des ouvertures, ainsi que les sens et positions des gonds ;
+- les marches, paliers, trémies et garde-corps mesurés, puis les détails de toiture et de façade ;
+- un inventaire localisé des équipements et matériaux, rattaché aux photographies ou au relevé, et une vérification de l’état actuel par rapport aux plans historiques.
+
+Le scan actuel permet de reconstruire une disposition et des contours à contrôler. Il ne permet pas de connaître tout le contenu réel du bâtiment. La simulation présente les informations disponibles et signale les inconnues ; une apparence plus détaillée ne constitue pas une preuve de fidélité.
