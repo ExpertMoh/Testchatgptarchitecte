@@ -2,7 +2,7 @@
 
 Atelier web de reconstruction architecturale : plan SVG interactif, maquette Three.js, documents sources et provenance des mesures. Premier prototype fonctionnel, développé en React, TypeScript et Vite.
 
-**La maquette fournie est une démonstration entièrement fictive. Elle ne représente pas l’immeuble de la planche jointe à la demande. Aucune cote ni proportion de cet immeuble n’a été supposée.** La planche jointe n’est pas embarquée dans le dépôt : importez le fichier original dans l’application pour commencer un relevé réel. L’échelle « 1/100 » d’une image redimensionnée ne constitue pas une calibration.
+**Le projet par défaut est désormais un relevé manuel de `Plan (1).pdf`, pages 4 à 8.** Chaque niveau a ses propres contours et un extrait du scan pour comparaison. Le modèle est un tracé à contrôler, sans certification de fidélité à 100 % : coordonnées, surfaces et épaisseurs issues du scan sont déduites ; les dimensions verticales des ouvertures non relevées restent inconnues. Les repères de plancher sont rattachés à la coupe p. 3 et à la façade p. 2. La démonstration fictive reste accessible séparément dans le menu du projet. Le PDF complet n’est pas publié ; seuls les extraits de plans nécessaires à la comparaison sont intégrés.
 
 ## Démarrage
 
@@ -38,7 +38,7 @@ E2E_PREVIEW=1 npm run test:e2e
 
 ## Fonctions du prototype
 
-- Cinq niveaux fictifs indépendants, panneau des étages et ajout de niveaux sans altitude ni hauteur implicites.
+- Cinq niveaux du PDF, tracés indépendamment : sous-sol avec cave arrière et WC ; commerce avec réserve, commun, SAS et escalier ; deux logements avec cuisine et séjour séparés ; troisième étage avec cuisine-séjour ouverte. Les espaces arrière non légendés restent non qualifiés. Une démonstration fictive distincte et les projets vierges restent disponibles.
 - Plan SVG avec sélection, déplacement de la vue, zoom, cotations et accrochage facultatif sur une grille de 5 cm.
 - Tracé de murs en deux clics ; contours de pièces en plusieurs clics puis Entrée ou double-clic ; emprises d’escalier en deux clics.
 - Placement des portes et fenêtres sur un mur hôte, à la position projetée du clic. Largeur, hauteur et seuil restent **inconnus** jusqu’à leur saisie.
@@ -48,11 +48,11 @@ E2E_PREVIEW=1 npm run test:e2e
 - Coupe **visuelle** à 1,10 m pour lire l’intérieur. Elle ne change aucune hauteur du modèle.
 - Visite intérieure à hauteur de caméra 1,65 m, ZQSD/WASD ou flèches et souris. Cliquer « Entrer dans la visite » ; Échap libère la souris. Pas de collisions, de circulation entre étages ou de validation d’accessibilité.
 - Import PNG, JPG, WebP et d’une page PDF au choix, rendu du PDF dans un worker local. Limite de 20 Mo par fichier ; rendu PDF limité à 2 400 px sur son grand côté ; images limitées à 64 mégapixels.
-- Document en fond avec visibilité et opacité ; calibration uniforme sur deux points et une distance vérifiée avec sa référence.
+- Document en fond avec visibilité et opacité ; comparaison Original / Superposition / Tracé. Calibration uniforme, translation et rotation de repère dans le modèle ; le relevé intégré aligne la façade sans redresser arbitrairement les angles du bâtiment. L’outil de recalage interactif demande deux points, une distance vérifiée et sa référence.
 - Annuler/rétablir jusqu’à 40 modifications ; sauvegarde locale automatique ; import/export JSON du projet, images et provenance incluses ; export SVG de la vue courante.
 - Contrôles des dimensions, sources, identifiants d’éléments, contours croisés, murs dégénérés, ouvertures hors du mur, ouvertures qui se chevauchent et volumes d’étages superposés.
 
-Les volumes qui nécessitent une épaisseur de mur, une hauteur ou une altitude inconnue ne sont pas générés en 3D. Un simple trait discontinu ou un repère « ? » en 2D signale une géométrie partielle, sans lui attribuer une dimension réelle. Une ouverture incomplète n’est pas découpée dans le mur en 3D. Consultez les contrôles pour identifier ces éléments.
+Les murs du relevé possèdent des contours de parements à quatre points, utilisés dans les deux vues ; leur épaisseur moyenne est déduite de la distance entre ces parements hachurés, jamais de l’épaisseur d’un trait. Leur édition recalcule l’axe hôte et l’épaisseur dérivée. Les volumes qui nécessitent une épaisseur de mur, une hauteur ou une altitude inconnue ne sont pas générés en 3D. Un simple trait discontinu ou un repère « ? » en 2D signale une géométrie partielle, sans lui attribuer une dimension réelle. Une ouverture incomplète n’est pas découpée dans le mur en 3D. Consultez les contrôles pour identifier ces éléments.
 
 ## Intégrer les documents réels
 
@@ -103,12 +103,12 @@ Chaque coordonnée et dimension architecturale est une valeur sourcée :
 
 `status` vaut `confirmed`, `inferred` ou `unknown`. Une valeur connue exige un identifiant de source ; une valeur inconnue doit être vide. Les longueurs et surfaces affichées sont dérivées des coordonnées. La calibration stocke les deux points en pixels, la distance sourcée et le facteur mètres/pixel. Les données de démonstration utilisent exclusivement la source `demo` et ne sont pas des mesures confirmées.
 
-React gère le projet et son historique ; les fonctions géométriques sont pures. La 3D et PDF.js sont chargés à la demande. Le modèle est validé à la lecture par Zod, puis contrôlé géométriquement. Une incohérence géométrique dans un fichier valide est signalée et peut être corrigée dans l’atelier.
+React gère le projet et son historique ; les fonctions géométriques sont pures. La 3D et PDF.js sont chargés à la demande. Les extraits raster du relevé intégré sont inclus dans le projet ; ils augmentent la taille de son chargement et de sa sauvegarde. Le modèle est validé à la lecture par Zod, puis contrôlé géométriquement. Une incohérence géométrique dans un fichier valide est signalée et peut être corrigée dans l’atelier.
 
 ## Limites et conservation des données
 
 - Vectorisation manuelle assistée uniquement : pas d’OCR, de détection de murs, de reconnaissance automatique de pièces ni d’interprétation historique.
-- Recalage uniforme uniquement : pas de redressement de perspective, correction de distorsion, rotation ou translation du raster dans l’interface. Préparer les scans, puis aligner la géométrie dans le repère commun. La précision dépend du document, des points cliqués et de la grille active.
+- Recalage uniforme uniquement : pas de redressement de perspective ni correction de distorsion. Le modèle peut contenir une translation et une rotation de repère ; le relevé intégré les utilise pour sa façade. L’interface interactive ne propose pas encore de déplacement ou de rotation manuels du raster. Préparer les scans, puis aligner la géométrie dans le repère commun. La précision dépend du document, des points cliqués et de la grille active.
 - Pas de validation structurelle, énergétique ou réglementaire ; pas de calcul de charges, de raccord topologique complet, de détection exhaustive des intersections/recouvrements entre pièces ou de contrôle de surfaces habitables.
 - Escaliers limités à une emprise et une flèche : ni nombre de marches, pente, hauteur de marche, palier ou trémie ne sont supposés. Les symboles de mobilier de démonstration sont illustratifs, sans métrique de relevé.
 - Pas d’IFC, DXF, DWG, GLB, backend, comptes, synchronisation ou collaboration. Le JSON permet de poursuivre le développement d’exports spécialisés.
@@ -140,3 +140,24 @@ node scripts/check-static-build.mjs
 ```
 
 Pour une publication manuelle chez un autre hébergeur de sites statiques, déposer **le contenu de `dist/`**, avec `index.html` à la racine, sans le dossier du dépôt, sans `node_modules` et sans données de navigateur.
+
+
+## Référence intégrée et reprise d’une ancienne session
+
+Le fichier `src/model/reference-data.json` contient les cinq extraits raster, leur page, les points du tracé et les mesures avec leur provenance. Le PDF traité possède huit pages scannées, sans couche de texte ; son SHA-256 est `19dbd04b3234c71b7b1f57c324ce2b30dead8841040cc71a26c6a6da438d9c2e`. Les plans utilisés sont p. 4 (sous-sol), p. 5 (RDC), p. 6 (premier), p. 7 (deuxième) et p. 8 (troisième).
+
+Le fichier `scripts/reference-traces.json` conserve les points manuellement repérés dans le raster à 100 dpi. `scripts/prepare-reference.py` produit les extraits à 220 dpi et transforme les coordonnées dans le repère commun. Il exige Poppler (`pdftoppm`) et Pillow et n’est **pas** une vectorisation automatique : il reproduit le tracé manuel spécifié. Le PDF doit être fourni séparément ; il n’est pas inclus dans Git.
+
+```bash
+python scripts/prepare-reference.py '/chemin/vers/Plan (1).pdf'
+npm test
+npm run build
+```
+
+Les repères altimétriques retenus sont −1,90 / 0,00 / 3,95 / 7,23 / 9,77 m. Les hauteurs d’étage sont déduites entre repères ; la limite supérieure 12,28 m est citée à la façade p. 2. Ces différences ne représentent pas des hauteurs libres sous plafond. Les largeurs d’ouverture sont issues du tracé entre tableaux, et ne sont pas des cotes écrites confirmées. Hauteurs et allèges restent vides tant qu’elles n’ont pas été reportées d’une source vérifiée. Les portes sans sens d’ouverture lisible n’ont pas d’arc supposé.
+
+Dans une ancienne session, la démonstration intacte est remplacée après conservation d’une copie sous la clé `charleroi-architecture-v1:demo-before-reference`. Un projet modifié est conservé. Pour ouvrir le nouveau relevé, utiliser **Ouvrir le relevé du PDF** dans le bandeau de démonstration ou **Ouvrir le relevé du PDF fourni** dans le menu du projet. La sélection crée une sauvegarde du projet précédent ; un échec de sauvegarde provoque son export JSON avant le changement. Le bouton Annuler permet aussi de revenir au projet précédent pendant la session.
+
+L’audit de fidélité et les limites de contrôle figurent dans `docs/fidelite-plan-reference.md`. La cohérence mathématique du modèle ne doit pas être présentée comme une validation de fidélité au document ou au bâtiment.
+
+Les cotes indépendantes lues (430/355/218 sur la page 6, 370 sur la page 7 et 275 sur la page 8) sont aussi comparées aux distances du tracé. Les écarts de plus de 5 cm sont affichés comme points à vérifier, dans les propriétés des espaces et dans « Sources & limites ». La tolérance de contrôle ne certifie pas la précision du relevé. Ces écarts restent à résoudre avant une validation métrique complète ; ils ne sont ni masqués ni corrigés par une déformation arbitraire du scan.

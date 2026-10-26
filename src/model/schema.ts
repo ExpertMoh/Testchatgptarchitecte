@@ -22,14 +22,17 @@ const CalibrationSchema = z.object({
   metersPerPixel: z.number().finite().positive().max(100),
   pixelA: z.object({ x: finite, y: finite }), pixelB: z.object({ x: finite, y: finite }),
   distance: MeasureSchema,
+  origin: z.object({ x: finite, y: finite }).optional(),
+  rotation: z.number().finite().min(-Math.PI).max(Math.PI).optional(),
 });
-export const WallSchema = z.object({ id: z.string(), name: z.string().max(160), start: PointSchema, end: PointSchema, thickness: MeasureSchema });
+export const WallSchema = z.object({ id: z.string(), name: z.string().max(160), start: PointSchema, end: PointSchema, thickness: MeasureSchema, footprint: z.array(PointSchema).length(4).optional() });
 export const OpeningSchema = z.object({
   id: z.string(), name: z.string().max(160), kind: z.enum(['door', 'window']), wallId: z.string(),
   offset: MeasureSchema, width: MeasureSchema, height: MeasureSchema, sill: MeasureSchema,
+  hinge: z.enum(['start', 'end']).optional(), swing: z.union([z.literal(-1), z.literal(1)]).optional(),
 });
-const RoomSchema = z.object({ id: z.string(), name: z.string().max(160), points: z.array(PointSchema).min(3).max(200), color: z.string().regex(/^#[0-9a-fA-F]{6}$/) });
-const StairSchema = z.object({ id: z.string(), name: z.string().max(160), start: PointSchema, end: PointSchema, width: MeasureSchema });
+const RoomSchema = z.object({ id: z.string(), name: z.string().max(160), points: z.array(PointSchema).min(3).max(200), color: z.string().regex(/^#[0-9a-fA-F]{6}$/), kind: z.enum(['interior','exterior','unverified']).optional(), controlDimensions: z.array(z.object({label:z.string(),expected:MeasureSchema,from:z.number().int().min(0),to:z.number().int().min(0)})).optional() });
+const StairSchema = z.object({ id: z.string(), name: z.string().max(160), start: PointSchema, end: PointSchema, width: MeasureSchema, footprint: z.array(PointSchema).min(3).max(100).optional(), path: z.array(PointSchema).min(2).max(100).optional() });
 export const FloorSchema = z.object({
   id: z.string(), name: z.string().max(160), shortName: z.string().max(30), elevation: MeasureSchema, height: MeasureSchema,
   walls: z.array(WallSchema).max(2000), openings: z.array(OpeningSchema).max(2000), rooms: z.array(RoomSchema).max(300), stairs: z.array(StairSchema).max(100),
@@ -38,6 +41,7 @@ export const FloorSchema = z.object({
 });
 export const ProjectSchema = z.object({
   schemaVersion: z.literal(1), id: z.string(), name: z.string().max(200), demonstration: z.boolean(),
+  reference: z.object({ documentName: z.string(), sha256: z.string(), pageCount: z.number().int(), revision: z.string(), limitations: z.array(z.string()) }).optional(),
   sources: z.array(SourceSchema).max(100), floors: z.array(FloorSchema).min(1).max(50),
 });
 export type Evidence = z.infer<typeof EvidenceSchema>;

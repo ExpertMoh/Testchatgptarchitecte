@@ -18,6 +18,8 @@ function pdfFixture(){
   return{name:'document.pdf',mimeType:'application/pdf',buffer:Buffer.from(pdf)};
 }
 
+test.beforeEach(async({page})=>{const demo=createDemo();demo.id='e2e-demo';await page.addInitScript(p=>{if(!localStorage.getItem('charleroi-architecture-v1'))localStorage.setItem('charleroi-architecture-v1',JSON.stringify(p));},demo);});
+
 test('démarre, affiche un vrai rendu 3D et édite la géométrie partagée',async({page})=>{
   const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));
   await page.goto('/');await expect(page.getByRole('heading',{name:'Premier étage',level:1})).toBeVisible();
@@ -54,11 +56,11 @@ test('importe une image, bloque la mesure sans recalage puis préserve les cotes
   await page.getByRole('button',{name:'Importer le document',exact:true}).click();
   await expect(page.getByRole('heading',{name:'Niveau à documenter',level:1})).toBeVisible();await expect(page.locator('.demo-banner')).toHaveCount(0);
   await expect(page.locator('.board-label').first()).toContainText('NON RECALÉ');
-  await page.getByRole('button',{name:'Mesurer (L)',exact:true}).click();await clickWorld(page,1,1);await expect(page.getByRole('status')).toContainText('Recalez le document');
-  await page.getByRole('button',{name:'Recaler (C)',exact:true}).click();await clickWorld(page,1,1);await clickWorld(page,7,1);
+  await page.getByRole('button',{name:'Mesurer (L)',exact:true}).click();await clickWorld(page,1,4);await expect(page.getByRole('status')).toContainText('Recalez le document');
+  await page.getByRole('button',{name:'Recaler (C)',exact:true}).click();await clickWorld(page,1,4);await clickWorld(page,7,4);
   await page.getByLabel('Distance vérifiée',{exact:true}).fill('6');await page.getByLabel('Référence de la cote',{exact:true}).fill('Cote 6,00 m testée sur la façade');await page.getByRole('button',{name:'Appliquer l’échelle'}).click();
   await expect(page.locator('.board-label').first()).toContainText('PLAN VECTORIEL');
-  await page.getByRole('button',{name:'Mur (M)',exact:true}).click();await clickWorld(page,1,2);await clickWorld(page,7,2);
+  await page.getByRole('button',{name:'Mur (M)',exact:true}).click();await clickWorld(page,1,6);await clickWorld(page,7,6);
   await expect(page.locator('.inspector')).toContainText('6,00 m');await expect(page.getByLabel('Épaisseur réelle',{exact:true})).toHaveValue('');
   await page.locator('.measure-field').filter({has:page.getByLabel('Épaisseur réelle',{exact:true})}).getByTitle('Provenance de la valeur').click();
   await page.getByLabel('Source : Épaisseur réelle',{exact:true}).selectOption({label:'plan-verifie.png'});
