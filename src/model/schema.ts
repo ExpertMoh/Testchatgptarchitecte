@@ -41,7 +41,7 @@ export const FloorSchema = z.object({
 });
 export const ProjectSchema = z.object({
   schemaVersion: z.literal(1), id: z.string(), name: z.string().max(200), demonstration: z.boolean(),
-  reference: z.object({ documentName: z.string(), sha256: z.string(), pageCount: z.number().int(), revision: z.string(), limitations: z.array(z.string()) }).optional(),
+  reference: z.object({ documentName: z.string(), sha256: z.string(), pageCount: z.number().int(), revision: z.string(), adjustments: z.array(z.object({floorId:z.string(),sourceId:z.string(),method:z.string(),details:z.string()})).optional(), limitations: z.array(z.string()) }).optional(),
   sources: z.array(SourceSchema).max(100), floors: z.array(FloorSchema).min(1).max(50),
 });
 export type Evidence = z.infer<typeof EvidenceSchema>;

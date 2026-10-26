@@ -1,7 +1,7 @@
 import { describe,it,expect } from 'vitest';
 import { createReferenceProject } from './reference';
 import { ProjectSchema } from './schema';
-import { area, floorArea, pixelToWorld, roomArea, roomPoints, selfIntersects, setWallFootprint, sourceBounds, validateGeometry, wallSolids, worldToPixel, xy } from './geometry';
+import { area, floorArea, pixelToWorld, roomArea, roomPoints, selfIntersects, setWallFootprint, sourceBounds, controlMeasurements, validateGeometry, wallSolids, worldToPixel, xy } from './geometry';
 import { parseProject } from '../lib/files';
 
 describe('Relevé du PDF original',()=>{
@@ -78,9 +78,15 @@ describe('Contrôles des géométries tracées éditables',()=>{
  });
 });
 
-it('rend visibles les écarts entre une cote écrite et la distance graphique, sans déclarer le relevé exact',()=>{
+it('contraint les longueurs lisibles sans déformer les fonds et conserve la provenance des ajustements',()=>{
  const p=createReferenceProject(),room=p.floors[2].rooms.find(r=>r.name==='Chambre')!;
  expect(room.controlDimensions?.[0].expected.value).toBe(3.55);
  expect(room.controlDimensions?.[0].expected.sourceId).toBe('plan-p6');
- expect(validateGeometry(p).some(i=>i.elementId===room.id&&i.message.includes('écart'))).toBe(true);
+ expect(controlMeasurements(room)[0].observed).toBeCloseTo(3.55,6);
+ expect(p.reference?.adjustments).toHaveLength(4);
+ for(const f of p.floors)for(const r of f.rooms)for(const c of controlMeasurements(r))expect(Math.abs(c.delta!),c.label).toBeLessThan(.05);
+ expect(validateGeometry(p).some(i=>i.message.includes('écart'))).toBe(false);
+ const cal=p.floors[2].calibration!;
+ const a=pixelToWorld({x:(184-115)*2.2,y:(310-45)*2.2},cal),b=pixelToWorld({x:(220-115)*2.2,y:(521-45)*2.2},cal);
+ expect(Math.hypot(b.x-a.x,b.y-a.y)).toBeGreaterThan(3.75);
 });

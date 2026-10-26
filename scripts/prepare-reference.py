@@ -13,7 +13,8 @@ if sha!=traces['documentSha256']:raise SystemExit('Le PDF ne correspond pas à l
 def m(value,source,note,status='inferred'):return dict(value=round(value,7),status=status,sourceId=source,note=note)
 def unknown(note):return dict(value=None,status='unknown',sourceId=None,note=note)
 def read_alt(value,note):return m(value,'plan-p3',note,'confirmed')
-project=dict(schemaVersion=1,id='charleroi-plan-original-v1',name='Charleroi · relevé du PDF',demonstration=False,sources=[],floors=[],reference=dict(documentName=args.pdf.name,sha256=sha,pageCount=8,revision='trace-1',limitations=[
+project=dict(schemaVersion=1,id='charleroi-plan-original-v1',name='Charleroi · relevé du PDF',demonstration=False,sources=[],floors=[],reference=dict(documentName=args.pdf.name,sha256=sha,pageCount=8,revision='trace-2',adjustments=[],limitations=[
+ 'Les cotes longitudinales lisibles contraignent le modèle. Les points sont ajustés suivant les axes mitoyens, sans déformer les fonds raster ; ces ajustements sont consignés séparément.',
  'Tracé manuel des parements et contours sur les scans. La précision n’est pas certifiée à 100 % ; contrôler en superposition et sur site.',
  'Coordonnées, surfaces, épaisseurs graphiques entre parements hachurés et largeurs d’ouvertures : données déduites après recalage, pas des cotes confirmées.',
  'Cotes du plan interprétées en centimètres. Les chaînes secondaires et les déformations du papier demandent un contrôle indépendant.',
@@ -31,16 +32,48 @@ with tempfile.TemporaryDirectory(prefix='charleroi-source-') as directory:
   image=Image.open(Path(directory)/f"page-{f['page']}.png").convert('RGB')
   image=image.crop(tuple(round(v*ratio) for v in crop));buffer=io.BytesIO();image.save(buffer,format='JPEG',quality=80,optimize=True)
   project['sources'].append(dict(id=source,name=f"{args.pdf.name} · p. {f['page']} · {f['name']}",kind='pdf',page=f['page'],description=f"Extrait raster du plan coté, sans modification de perspective. SHA-256 du PDF : {sha}. Recadrage du raster à 100 dpi : {crop}. Tracé manuel à contrôler en superposition.",image='data:image/jpeg;base64,'+base64.b64encode(buffer.getvalue()).decode(),pixelWidth=image.width,pixelHeight=image.height))
-  dim=f['dimension'];a,b=dim['a'],dim['b'];scale=dim['meters']/math.dist(a,b);angle=-math.atan2(f['axisEnd'][1]-f['datum'][1],f['axisEnd'][0]-f['datum'][0]);co,si=math.cos(angle),math.sin(angle)
-  def world(raw):
+  dim=f['dimension'];reference_a,reference_b=dim['a'],dim['b'];scale=dim['meters']/math.dist(reference_a,reference_b);angle=-math.atan2(f['axisEnd'][1]-f['datum'][1],f['axisEnd'][0]-f['datum'][0]);co,si=math.cos(angle),math.sin(angle)
+  def raw_world(raw):
    x=(raw[0]-f['datum'][0])*scale;y=(raw[1]-f['datum'][1])*scale
    return (co*x-si*y,si*x+co*y)
+  bands=[]
+  left_quad=f['walls'][0][2]
+  right_quad=next((w[2] for w in f['walls'] if w[0]=='right'),None)
+  def axis_x(quad,y):
+   a,b=quad[0],quad[1]
+   return a[0]+(b[0]-a[0])*(y-a[1])/(b[1]-a[1])
+  def moved(raw):
+   x,y=raw
+   if not bands:return raw
+   yy=y-sum((band['factor']-1)*max(0,min(band['end']-y,band['end']-band['start'])) for band in bands)
+   left,right=axis_x(left_quad,y),axis_x(right_quad,y)
+   u=(x-left)/(right-left)
+   xx=axis_x(left_quad,yy)+u*(axis_x(right_quad,yy)-axis_x(left_quad,yy))
+   return (xx,yy)
+  def world(raw):return raw_world(moved(raw))
+  constraints=[]
+  for room in f['rooms']:
+   for c in f.get('controlDimensions',{}).get(room[0],[]):
+    a,b=room[2][c['from']],room[2][c['to']]
+    if abs(a[1]-b[1])>1.5*abs(a[0]-b[0]):constraints.append((room,c,a,b))
+  for room,c,a,b in sorted(constraints,key=lambda item:min(item[2][1],item[3][1]),reverse=True):
+   if right_quad is None:raise ValueError('Axes mitoyens manquants pour un ajustement contrôlé.')
+   band=dict(start=min(a[1],b[1]),end=max(a[1],b[1]),factor=1.0);bands.append(band)
+   def measured(factor):band['factor']=factor;return math.dist(world(a),world(b))
+   lo,hi=.5,1.5
+   if not measured(lo)<=c['value']<=measured(hi):raise ValueError('Contrainte hors du domaine de correction : '+c['label'])
+   for _ in range(60):
+    mid=(lo+hi)/2
+    if measured(mid)<c['value']:lo=mid
+    else:hi=mid
+   band['factor']=(lo+hi)/2
+   project['reference']['adjustments'].append(dict(floorId=f['id'],sourceId=source,method='Contrainte longitudinale suivant les axes mitoyens ; fond raster inchangé',details=f"{c['label']} : {c['value']} m ; bande du raster 100 dpi y={band['start']} à {band['end']} ; facteur longitudinal {band['factor']:.8f}. Interpolation continue, façade conservée comme repère. Les autres coordonnées restent déduites."))
   def point(raw):
-   x,y=world(raw);note=f"Tracé manuel p. {f['page']} ; raster 100 dpi ({raw[0]}, {raw[1]}). Recalage déduit de la cote {dim['meters']} m ; repère de façade commun."
+   x,y=world(raw);note=f"Tracé manuel p. {f['page']} ; raster 100 dpi ({raw[0]}, {raw[1]}). Recalage déduit de la cote {dim['meters']} m ; repère de façade commun.{(' Ajustement longitudinal par les cotes écrites, détaillé dans les métadonnées du projet ; fond raster inchangé.' if bands else '')}"
    return dict(x=m(x,source,note),y=m(y,source,note))
   def pixel(raw):return dict(x=(raw[0]-crop[0])*ratio,y=(raw[1]-crop[1])*ratio)
-  origin=world(crop[:2])
-  cal=dict(metersPerPixel=scale/ratio,pixelA=pixel(a),pixelB=pixel(b),distance=m(dim['meters'],source,dim['citation']),origin=dict(x=origin[0],y=origin[1]),rotation=angle)
+  origin=raw_world(crop[:2])
+  cal=dict(metersPerPixel=scale/ratio,pixelA=pixel(reference_a),pixelB=pixel(reference_b),distance=m(dim['meters'],source,dim['citation']),origin=dict(x=origin[0],y=origin[1]),rotation=angle)
   floor=dict(id=f['id'],name=f['name'],shortName=f['shortName'],elevation=read_alt(f['elevation'],f"Repère de plancher p. 3 : {f['elevation']:.2f} m, concordant avec les plans lorsqu’un NIV. est indiqué."),height=m(f['height'],'plan-p3','Différence entre repères de plancher de la coupe p. 3 et de la façade p. 2. Hauteur d’étage, pas hauteur libre.'),sourceId=source,sourceVisible=True,sourceOpacity=.80,calibration=cal,walls=[],rooms=[],openings=[],stairs=[])
   for r in f['rooms']:
    room=dict(id=f['id']+'-'+r[0],name=r[1],points=[point(p) for p in r[2]],color=r[3],kind=r[4] if len(r)>4 else 'interior')
